@@ -1,0 +1,83 @@
+/* Light theme per design spec (#FAFAF8 base). */
+* { box-sizing: border-box; }
+body { margin: 0; background: #FAFAF8; color: #2A2A28;
+  font: 14px/1.6 -apple-system, "PingFang SC", "Helvetica Neue", sans-serif; }
+a { color: #3A5887; text-decoration: none; }
+a:hover { text-decoration: underline; }
+h1 { font-size: 22px; } h2 { font-size: 16px; margin: 18px 0 8px; }
+h3 { font-size: 13px; margin: 12px 0 6px; color: #555; }
+.muted { color: #8a8a85; font-size: 12px; }
+.small { font-size: 12px; }
+.error { color: #C44E52; }
+.hidden { display: none !important; }
+
+.topbar { display: flex; align-items: center; gap: 16px; padding: 8px 20px;
+  background: #fff; border-bottom: 1px solid #e4e4df; position: sticky; top: 0; z-index: 10; }
+.brand { font-weight: 700; color: #2A2A28; }
+.topbar input { flex: 1; max-width: 420px; padding: 6px 10px;
+  border: 1px solid #d8d8d2; border-radius: 6px; background: #FAFAF8; }
+.topbar nav { display: flex; gap: 12px; align-items: center; }
+.topbar button { cursor: pointer; border: 1px solid #d8d8d2; background: #fff;
+  border-radius: 6px; padding: 5px 10px; }
+
+#app { max-width: 1100px; margin: 0 auto; padding: 16px 20px 60px; }
+.statbar { padding: 10px 0; font-size: 15px; }
+
+.cards { display: flex; flex-wrap: wrap; gap: 10px; }
+.card { border: 1px solid #e4e4df; background: #fff; border-radius: 8px;
+  padding: 10px 14px; min-width: 130px; }
+.card:hover { border-color: #4C72B0; text-decoration: none; }
+.card-name { font-weight: 600; margin-bottom: 4px; color: #2A2A28; }
+
+.badge { display: inline-block; padding: 1px 7px; border-radius: 9px;
+  font-size: 11px; color: #fff; vertical-align: 1px; }
+.badge.det { background: #5B5B57; }
+.badge.llm { background: #fff; color: #A8842C; border: 1px solid #CCB974; }
+
+.tabs { display: flex; gap: 8px; flex-wrap: wrap; }
+.tab { cursor: pointer; border: 1px solid #d8d8d2; background: #fff;
+  border-radius: 16px; padding: 4px 12px; }
+.tab.active { background: #4C72B0; color: #fff; border-color: #4C72B0; }
+
+ul.plain { list-style: none; padding: 0; margin: 6px 0; }
+ul.plain li { padding: 4px 0; border-bottom: 1px dashed #ececea; }
+.doclist li { display: flex; gap: 10px; align-items: baseline; }
+.edge-row .cite, .cite { color: #937860; font-size: 12px; }
+.cite.jump { background: none; border: none; cursor: pointer; }
+.btn { display: inline-block; border: 1px solid #d8d8d2; background: #fff;
+  border-radius: 6px; padding: 4px 10px; font-size: 13px; cursor: pointer; }
+
+.cols { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+.entity-head .summary { font-size: 15px; }
+
+/* doc reading page */
+.doc-layout { display: grid; grid-template-columns: 260px 1fr; gap: 24px; }
+.doc-side { font-size: 13px; border-right: 1px solid #ececea; padding-right: 14px; }
+.doc-actions { display: flex; gap: 10px; align-items: center; margin: 6px 0; }
+.doc-actions button { cursor: pointer; border: 1px solid #d8d8d2; background: #fff;
+  border-radius: 6px; padding: 3px 8px; font-size: 12px; }
+.md-body { max-width: 760px; }
+.md-body pre { background: #f3f3ef; padding: 10px; border-radius: 6px; overflow-x: auto; }
+.md-body code { background: #f3f3ef; padding: 1px 4px; border-radius: 3px; }
+.md-body img { max-width: 100%; }
+#doc-source { white-space: pre-wrap; background: #fff; border: 1px solid #e4e4df;
+  padding: 14px; border-radius: 6px; font-size: 13px; }
+mark { background: #FFE9A8; padding: 1px 0; }
+#cite-notice { background: #FFF6E0; border: 1px solid #E8C97A; padding: 6px 10px;
+  border-radius: 6px; margin: 8px 0; }
+
+/* graph page */
+.graph-layout { display: grid; grid-template-columns: 150px 1fr 280px; gap: 14px;
+  height: calc(100vh - 110px); }
+.graph-filters { font-size: 12px; overflow-y: auto; }
+.graph-filters label { display: flex; align-items: center; gap: 5px; padding: 2px 0; }
+.graph-filters i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.graph-filters input[type=range] { width: 100%; }
+.graph-main { display: flex; flex-direction: column; min-width: 0; }
+.graph-bar { display: flex; gap: 8px; margin-bottom: 8px; }
+.graph-bar input { flex: 1; padding: 4px 8px; border: 1px solid #d8d8d2; border-radius: 6px; }
+#cy { flex: 1; background: #fff; border: 1px solid #e4e4df; border-radius: 8px; }
+.graph-side { overflow-y: auto; font-size: 13px; border-left: 1px solid #ececea;
+  padding-left: 12px; }
+.edge-card blockquote { border-left: 3px solid #55A868; margin: 8px 0;
+  padding: 4px 10px; background: #f6faf6; }

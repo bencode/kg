@@ -1,0 +1,34 @@
+{
+  "name": "kg",
+  "version": "0.2.0",
+  "description": "Knowledge graph over a markdown vault — files-as-truth extraction, SQLite index, local viewer",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.5"
+  },
+  "bin": {
+    "kg": "./dist/cli.js"
+  },
+  "exports": {
+    ".": "./dist/index.js",
+    "./types": "./dist/types.js"
+  },
+  "files": [
+    "dist",
+    "viewer"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@node-rs/jieba": "^2.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.2.6"
+  }
+}

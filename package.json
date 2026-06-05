@@ -1,0 +1,12 @@
+{
+  "name": "kg-workspace",
+  "private": true,
+  "scripts": {
+    "build": "pnpm -C packages/kg build",
+    "test": "pnpm -C packages/kg test",
+    "check": "biome check packages/kg/src"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.4.16"
+  }
+}
