@@ -12,6 +12,7 @@ const route = async () => {
   const [path, query] = hash.split('?');
   const params = new URLSearchParams(query || '');
   const parts = path.split('/').filter(Boolean);
+  app.classList.toggle('full-bleed', parts[0] === 'graph');
   app.innerHTML = spinner;
   try {
     if (parts.length === 0) await renderHome(app, params);

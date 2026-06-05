@@ -111,7 +111,7 @@ const sideEdge = async (side, data) => {
 export async function renderGraph(el, focus) {
   const g = await getGraph();
   el.innerHTML = `
-    <div class="graph-layout">
+    <div class="graph-layout side-empty">
       <aside class="graph-filters">${FILTERS_HTML}</aside>
       <div class="graph-main">
         <div class="graph-bar">
@@ -128,6 +128,11 @@ export async function renderGraph(el, focus) {
   let mode = focus ? 'focus' : 'overview';
   let focusName = focus || null;
   const side = el.querySelector('#g-side');
+  const layoutEl = el.querySelector('.graph-layout');
+  const openSide = () => {
+    layoutEl.classList.remove('side-empty');
+    cy.resize(); // canvas shrinks when the side panel opens
+  };
   const cy = cytoscape({
     container: el.querySelector('#cy'), style: STYLE,
     wheelSensitivity: 0.3, textureOnViewport: true, hideEdgesOnViewport: true,
@@ -146,10 +151,14 @@ export async function renderGraph(el, focus) {
           quality: 'default', animate: false, nodeSeparation: 75, packComponents: true };
     cy.layout(layout).run();
   };
-  cy.on('tap', 'node[kind="entity"]', (ev) => sideEntity(side, ev.target.data('label')));
+  cy.on('tap', 'node[kind="entity"]', (ev) => {
+    openSide();
+    sideEntity(side, ev.target.data('label'));
+  });
   cy.on('tap', 'edge', (ev) => {
     cy.edges().removeClass('hl');
     ev.target.addClass('hl');
+    openSide();
     sideEdge(side, ev.target.data());
   });
   cy.on('dbltap', 'node[kind="entity"]', (ev) => {
