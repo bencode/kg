@@ -3,19 +3,21 @@
 // (import.meta.url points into the bundle), so the server falls back to these
 // embedded copies. Run after any viewer/ change: `pnpm embed`.
 
-import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { readdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
-const pkg = dirname(dirname(fileURLToPath(import.meta.url)));
-const viewerDir = join(pkg, 'viewer');
-const out = join(pkg, 'src', 'viewer-assets.ts');
+const pkg = dirname(dirname(fileURLToPath(import.meta.url)))
+const viewerDir = join(pkg, 'viewer')
+const out = join(pkg, 'src', 'viewer-assets.ts')
 
-const files = readdirSync(viewerDir).filter((f) => !f.startsWith('.')).sort();
+const files = readdirSync(viewerDir)
+  .filter((f) => !f.startsWith('.'))
+  .sort()
 const entries = files.map((f) => {
-  const text = readFileSync(join(viewerDir, f), 'utf-8');
-  return `  ${JSON.stringify(f)}: ${JSON.stringify(text)},`;
-});
+  const text = readFileSync(join(viewerDir, f), 'utf-8')
+  return `  ${JSON.stringify(f)}: ${JSON.stringify(text)},`
+})
 
 writeFileSync(
   out,
@@ -29,5 +31,5 @@ writeFileSync(
     '',
   ].join('\n'),
   'utf-8',
-);
-console.log(`embedded ${files.length} files → src/viewer-assets.ts`);
+)
+console.log(`embedded ${files.length} files → src/viewer-assets.ts`)

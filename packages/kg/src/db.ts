@@ -9,44 +9,44 @@
 // the adapter only normalizes construction and `get()`'s no-row value
 // (bun returns null, node returns undefined).
 
-import { createHash } from 'node:crypto';
-import { mkdirSync } from 'node:fs';
-import { homedir } from 'node:os';
-import { dirname, join, resolve } from 'node:path';
+import { createHash } from 'node:crypto'
+import { mkdirSync } from 'node:fs'
+import { homedir } from 'node:os'
+import { dirname, join, resolve } from 'node:path'
 
-export type SqlValue = string | number | bigint | null;
-export type RunResult = { lastInsertRowid: number | bigint };
+export type SqlValue = string | number | bigint | null
+export type RunResult = { lastInsertRowid: number | bigint }
 export type Stmt = {
-  run(...args: SqlValue[]): RunResult;
-  get(...args: SqlValue[]): unknown;
-  all(...args: SqlValue[]): unknown[];
-};
+  run(...args: SqlValue[]): RunResult
+  get(...args: SqlValue[]): unknown
+  all(...args: SqlValue[]): unknown[]
+}
 export type Db = {
-  exec(sql: string): void;
-  prepare(sql: string): Stmt;
-  close(): void;
-};
+  exec(sql: string): void
+  prepare(sql: string): Stmt
+  close(): void
+}
 
-type RawDbCtor = new (path: string) => Db;
+type RawDbCtor = new (path: string) => Db
 
 const loadCtor = async (): Promise<RawDbCtor> => {
   if (process.versions.bun !== undefined) {
-    const mod = (await import('bun:sqlite')) as { Database: unknown };
-    return mod.Database as RawDbCtor;
+    const mod = (await import('bun:sqlite')) as { Database: unknown }
+    return mod.Database as RawDbCtor
   }
-  const mod = await import('node:sqlite');
-  return mod.DatabaseSync as unknown as RawDbCtor;
-};
+  const mod = await import('node:sqlite')
+  return mod.DatabaseSync as unknown as RawDbCtor
+}
 
-const SqliteDatabase = await loadCtor();
+const SqliteDatabase = await loadCtor()
 
-export const SCHEMA_VERSION = '1';
-export const CACHE_DIR = join(homedir(), '.cache', 'kg');
+export const SCHEMA_VERSION = '1'
+export const CACHE_DIR = join(homedir(), '.cache', 'kg')
 
 export const dbPathFor = (vault: string): string => {
-  const digest = createHash('sha1').update(resolve(vault)).digest('hex').slice(0, 16);
-  return join(CACHE_DIR, `${digest}.db`);
-};
+  const digest = createHash('sha1').update(resolve(vault)).digest('hex').slice(0, 16)
+  return join(CACHE_DIR, `${digest}.db`)
+}
 
 export const SCHEMA = `
 CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
@@ -100,52 +100,52 @@ CREATE TRIGGER documents_au AFTER UPDATE ON documents BEGIN
     INSERT INTO documents_fts(documents_fts, rowid, tokenized) VALUES('delete', old.id, old.tokenized);
     INSERT INTO documents_fts(rowid, tokenized) VALUES (new.id, new.tokenized);
 END;
-`;
+`
 
-type RawStmt = Stmt & { finalize?: () => void };
+type RawStmt = Stmt & { finalize?: () => void }
 
 const wrapStmt = (raw: RawStmt): Stmt => ({
   run: (...args) => raw.run(...args),
   get: (...args) => raw.get(...args) ?? undefined, // bun returns null for no row
   all: (...args) => raw.all(...args),
-});
+})
 
 export const connect = (dbPath: string): Db => {
-  mkdirSync(dirname(dbPath), { recursive: true });
-  const db = new SqliteDatabase(dbPath);
-  db.exec('PRAGMA journal_mode=WAL');
-  db.exec('PRAGMA foreign_keys=ON');
-  db.exec('PRAGMA busy_timeout=5000');
+  mkdirSync(dirname(dbPath), { recursive: true })
+  const db = new SqliteDatabase(dbPath)
+  db.exec('PRAGMA journal_mode=WAL')
+  db.exec('PRAGMA foreign_keys=ON')
+  db.exec('PRAGMA busy_timeout=5000')
   // bun:sqlite defers the real close while prepared statements are alive —
   // track them so close() can finalize first (node:sqlite has no finalize).
-  const stmts: RawStmt[] = [];
+  const stmts: RawStmt[] = []
   return {
     exec: (sql) => db.exec(sql),
     prepare: (sql) => {
-      const raw = db.prepare(sql) as RawStmt;
-      stmts.push(raw);
-      return wrapStmt(raw);
+      const raw = db.prepare(sql) as RawStmt
+      stmts.push(raw)
+      return wrapStmt(raw)
     },
     close: () => {
-      for (const s of stmts) s.finalize?.();
-      stmts.length = 0;
-      db.close();
+      for (const s of stmts) s.finalize?.()
+      stmts.length = 0
+      db.close()
     },
-  };
-};
+  }
+}
 
 export const createSchema = (db: Db): void => {
-  db.exec(SCHEMA);
-  db.prepare("INSERT INTO meta(key, value) VALUES('schema_version', ?)").run(SCHEMA_VERSION);
-};
+  db.exec(SCHEMA)
+  db.prepare("INSERT INTO meta(key, value) VALUES('schema_version', ?)").run(SCHEMA_VERSION)
+}
 
 export const schemaVersion = (db: Db): string | null => {
   try {
     const row = db.prepare("SELECT value FROM meta WHERE key='schema_version'").get() as
       | { value: string }
-      | undefined;
-    return row?.value ?? null;
+      | undefined
+    return row?.value ?? null
   } catch {
-    return null;
+    return null
   }
-};
+}
