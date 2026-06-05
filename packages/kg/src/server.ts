@@ -11,6 +11,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as api from './api.js';
 import * as queries from './queries.js';
+import { viewerAssets } from './viewer-assets.js';
 
 const VIEWER_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', 'viewer');
 
@@ -62,13 +63,21 @@ const handleStatic = (res: ServerResponse, parts: string[]): void => {
     send(res, 404, 'text/plain', 'not found');
     return;
   }
+  const ext = name.slice(name.lastIndexOf('.'));
+  const mime = MIME[ext] ?? 'application/octet-stream';
+  // disk first (dev / package install); embedded fallback (compiled binary,
+  // where import.meta.url points into the bundle and viewer/ has no real path)
   const target = resolve(VIEWER_DIR, name);
-  if (!target.startsWith(VIEWER_DIR) || !existsSync(target) || !statSync(target).isFile()) {
-    send(res, 404, 'text/plain', 'not found');
+  if (target.startsWith(VIEWER_DIR) && existsSync(target) && statSync(target).isFile()) {
+    send(res, 200, mime, readFileSync(target));
     return;
   }
-  const ext = name.slice(name.lastIndexOf('.'));
-  send(res, 200, MIME[ext] ?? 'application/octet-stream', readFileSync(target));
+  const embedded = viewerAssets[name];
+  if (embedded !== undefined) {
+    send(res, 200, mime, embedded);
+    return;
+  }
+  send(res, 404, 'text/plain', 'not found');
 };
 
 const handle = (vault: string, req: IncomingMessage, res: ServerResponse): void => {

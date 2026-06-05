@@ -24,16 +24,17 @@ from these files and may be deleted freely.
 
 ## CLI invocation
 
-`kg` is a Node CLI (Node ≥22.5; on ≥24 no flags needed). From a plugin
-install, `${CLAUDE_PLUGIN_ROOT}` is the repo root:
+`kg` runs on Bun (preferred — executes TS directly, no build step) or
+Node ≥22.5. From a plugin install, `${CLAUDE_PLUGIN_ROOT}` is the repo root:
 
 ```bash
-node ${CLAUDE_PLUGIN_ROOT}/packages/kg/dist/cli.js <command> ...
+bun ${CLAUDE_PLUGIN_ROOT}/packages/kg/src/cli.ts <command> ...
+# fallbacks: node ${CLAUDE_PLUGIN_ROOT}/packages/kg/dist/cli.js (after pnpm build)
+#            a compiled single-file binary `kg` if one is on PATH
 ```
 
-From a checkout, equivalently `node <repo>/packages/kg/dist/cli.js ...` (run
-`pnpm install && pnpm build` once if `dist/` is missing). Use an absolute path
-in Bash; the binary is not on global PATH.
+Run `pnpm install` once in the repo if node_modules is missing. Use an
+absolute path in Bash; the binary is not on global PATH.
 
 All commands print JSON to stdout. Exit codes: `0` ok, `1` usage/IO error,
 `2` validation error.

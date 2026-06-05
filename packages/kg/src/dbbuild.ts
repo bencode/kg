@@ -5,8 +5,8 @@
 
 import { existsSync, readdirSync, readFileSync, renameSync, unlinkSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import type { DatabaseSync } from 'node:sqlite';
 import * as conceptsMod from './concepts.js';
+import type { Db } from './db.js';
 import * as dbmod from './db.js';
 import * as layout from './layout.js';
 import { parse } from './parser.js';
@@ -35,7 +35,7 @@ type EdgeRow = {
   conf: number;
 };
 
-const insertEdge = (db: DatabaseSync, e: EdgeRow): void => {
+const insertEdge = (db: Db, e: EdgeRow): void => {
   db.prepare(
     'INSERT INTO edges(src_kind,src_id,dst_kind,dst_id,relation_type,' +
       'source_doc_id,confidence,method,anchor,raw) VALUES(?,?,?,?,?,?,?,?,?,?)',
@@ -160,11 +160,14 @@ export const build = (vaultRaw: string, dbPath?: string): BuildResult => {
 
   const updCount = db.prepare('UPDATE entities SET mention_count=? WHERE id=?');
   for (const [eid, n] of mentionCount) updCount.run(n, eid);
+  // bun:sqlite's close() does not checkpoint WAL sidecars — flush everything
+  // into the main file before we rename it, or the data stays stranded in
+  // `<working>-wal` and the renamed db reads short.
+  db.exec('PRAGMA wal_checkpoint(TRUNCATE)');
   db.close();
 
-  for (const ext of ['', '-wal', '-shm']) {
-    const side = `${target}${ext}`;
-    if (existsSync(side)) unlinkSync(side);
+  for (const p of [`${working}-wal`, `${working}-shm`, target, `${target}-wal`, `${target}-shm`]) {
+    if (existsSync(p)) unlinkSync(p);
   }
   renameSync(working, target);
   return {

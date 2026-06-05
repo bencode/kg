@@ -21,6 +21,12 @@
     }
   },
   "files": {
-    "includes": ["**", "!**/dist", "!**/node_modules", "!packages/kg/viewer"]
+    "includes": [
+      "**",
+      "!**/dist",
+      "!**/node_modules",
+      "!packages/kg/viewer",
+      "!packages/kg/src/viewer-assets.ts"
+    ]
   }
 }

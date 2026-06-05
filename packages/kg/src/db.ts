@@ -1,14 +1,44 @@
 // SQLite graph index — a rebuildable view over the files in meta/kg/.
 //
-// Derived data: delete it and `kg db build` recreates it. Schema identical to
-// the Python implementation (same cache path derivation), so the index files
-// are interchangeable between the two.
+// Derived data: delete it and `kg db build` recreates it. Schema identical
+// across runtimes (same cache path derivation), so index files are
+// interchangeable.
+//
+// Runtime adapter: bun → bun:sqlite (node:sqlite is unavailable in Bun 1.2.x),
+// node → node:sqlite. Both expose the same exec/prepare/run/get/all surface;
+// the adapter only normalizes construction and `get()`'s no-row value
+// (bun returns null, node returns undefined).
 
 import { createHash } from 'node:crypto';
 import { mkdirSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
-import { DatabaseSync } from 'node:sqlite';
+
+export type SqlValue = string | number | bigint | null;
+export type RunResult = { lastInsertRowid: number | bigint };
+export type Stmt = {
+  run(...args: SqlValue[]): RunResult;
+  get(...args: SqlValue[]): unknown;
+  all(...args: SqlValue[]): unknown[];
+};
+export type Db = {
+  exec(sql: string): void;
+  prepare(sql: string): Stmt;
+  close(): void;
+};
+
+type RawDbCtor = new (path: string) => Db;
+
+const loadCtor = async (): Promise<RawDbCtor> => {
+  if (process.versions.bun !== undefined) {
+    const mod = (await import('bun:sqlite')) as { Database: unknown };
+    return mod.Database as RawDbCtor;
+  }
+  const mod = await import('node:sqlite');
+  return mod.DatabaseSync as unknown as RawDbCtor;
+};
+
+const SqliteDatabase = await loadCtor();
 
 export const SCHEMA_VERSION = '1';
 export const CACHE_DIR = join(homedir(), '.cache', 'kg');
@@ -72,21 +102,44 @@ CREATE TRIGGER documents_au AFTER UPDATE ON documents BEGIN
 END;
 `;
 
-export const connect = (dbPath: string): DatabaseSync => {
+type RawStmt = Stmt & { finalize?: () => void };
+
+const wrapStmt = (raw: RawStmt): Stmt => ({
+  run: (...args) => raw.run(...args),
+  get: (...args) => raw.get(...args) ?? undefined, // bun returns null for no row
+  all: (...args) => raw.all(...args),
+});
+
+export const connect = (dbPath: string): Db => {
   mkdirSync(dirname(dbPath), { recursive: true });
-  const db = new DatabaseSync(dbPath);
+  const db = new SqliteDatabase(dbPath);
   db.exec('PRAGMA journal_mode=WAL');
   db.exec('PRAGMA foreign_keys=ON');
   db.exec('PRAGMA busy_timeout=5000');
-  return db;
+  // bun:sqlite defers the real close while prepared statements are alive —
+  // track them so close() can finalize first (node:sqlite has no finalize).
+  const stmts: RawStmt[] = [];
+  return {
+    exec: (sql) => db.exec(sql),
+    prepare: (sql) => {
+      const raw = db.prepare(sql) as RawStmt;
+      stmts.push(raw);
+      return wrapStmt(raw);
+    },
+    close: () => {
+      for (const s of stmts) s.finalize?.();
+      stmts.length = 0;
+      db.close();
+    },
+  };
 };
 
-export const createSchema = (db: DatabaseSync): void => {
+export const createSchema = (db: Db): void => {
   db.exec(SCHEMA);
   db.prepare("INSERT INTO meta(key, value) VALUES('schema_version', ?)").run(SCHEMA_VERSION);
 };
 
-export const schemaVersion = (db: DatabaseSync): string | null => {
+export const schemaVersion = (db: Db): string | null => {
   try {
     const row = db.prepare("SELECT value FROM meta WHERE key='schema_version'").get() as
       | { value: string }

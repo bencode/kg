@@ -22,20 +22,38 @@ Key properties:
 - **Two trust tiers**: `deterministic` edges (md links, arXiv ids) vs `llm`
   edges (extracted, with confidence).
 
-## Install / build
+## Install
 
-Node ≥ 22.5 (≥ 24 recommended — `node:sqlite` is stable there), pnpm.
+Three ways, easiest first:
 
-```bash
-pnpm install
-pnpm build        # tsc → packages/kg/dist
-pnpm test         # vitest
-```
+1. **Single-file binary** (no runtime needed at all):
+   ```bash
+   pnpm install && pnpm -C packages/kg compile   # → dist-bin/kg (~60MB)
+   ./dist-bin/kg db stats <vault>
+   ```
+   Ship that one file to users — sqlite, jieba dict, and the viewer UI are all
+   embedded.
+2. **Bun** (runs TypeScript directly, no build step):
+   ```bash
+   bun packages/kg/src/cli.ts <command> ...
+   ```
+3. **Node ≥ 22.5** (npm ecosystem; on 22.x add `--experimental-sqlite`):
+   ```bash
+   pnpm install && pnpm build      # tsc → packages/kg/dist
+   node packages/kg/dist/cli.js <command> ...
+   ```
+
+The sqlite layer auto-selects `bun:sqlite` or `node:sqlite` at runtime; index
+files are interchangeable between the two.
+
+Dev: `pnpm test` (vitest, node path) and `pnpm -C packages/kg test:bun`
+(bun path) run the same suite. After editing `packages/kg/viewer/`, run
+`pnpm -C packages/kg embed` to refresh the binary-embedded copies.
 
 ## CLI
 
 ```bash
-KG="node packages/kg/dist/cli.js"
+KG="bun packages/kg/src/cli.ts"   # or node packages/kg/dist/cli.js, or dist-bin/kg
 
 # Phase 1 — pure files
 $KG scan <vault> [--scope knowledge]      # hash ledger: new/changed/deleted

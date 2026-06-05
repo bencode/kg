@@ -5,8 +5,8 @@
 
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
-import type { DatabaseSync } from 'node:sqlite';
 import * as conceptsMod from './concepts.js';
+import type { Db } from './db.js';
 import * as dbmod from './db.js';
 import { tokenizeQuery } from './tokenize.js';
 import type { EdgeIn, EdgeOut, EntityAggregate, GraphExport, NodeRef, SourceDoc } from './types.js';
@@ -38,7 +38,7 @@ type DbEdgeRow = {
   raw: string | null;
 };
 
-const open = (vault: string): DatabaseSync => {
+const open = (vault: string): Db => {
   const path = dbmod.dbPathFor(resolve(vault));
   if (!existsSync(path)) {
     throw new IndexMissing(`no index at ${path}; run \`kg db build ${vault}\``);
@@ -50,7 +50,7 @@ const open = (vault: string): DatabaseSync => {
   return db;
 };
 
-const entityRow = (db: DatabaseSync, name: string, vault?: string): EntityRow | undefined => {
+const entityRow = (db: Db, name: string, vault?: string): EntityRow | undefined => {
   const n = conceptsMod.norm(name);
   const row = db
     .prepare('SELECT * FROM entities WHERE cid=? OR lower(canonical)=? OR lower(display)=?')
@@ -116,7 +116,7 @@ export const search = (vault: string, query: string, limit = 20): SearchHit[] =>
   return rows.map((r) => ({ ...r, score: Math.round(r.score * 1000) / 1000 }));
 };
 
-const label = (db: DatabaseSync, kind: string, eid: number): NodeRef => {
+const label = (db: Db, kind: string, eid: number): NodeRef => {
   if (kind === 'entity') {
     const r = db.prepare('SELECT canonical, type FROM entities WHERE id=?').get(eid) as
       | { canonical: string; type: string }
@@ -129,7 +129,7 @@ const label = (db: DatabaseSync, kind: string, eid: number): NodeRef => {
   return { kind: 'doc', title: r?.title ?? String(eid), path: r?.path ?? '', hash: r?.hash ?? '' };
 };
 
-const sourceDoc = (db: DatabaseSync, docId: number): SourceDoc | null => {
+const sourceDoc = (db: Db, docId: number): SourceDoc | null => {
   const r = db.prepare('SELECT hash, path, title FROM documents WHERE id=?').get(docId) as
     | SourceDoc
     | undefined;

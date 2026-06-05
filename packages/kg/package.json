@@ -21,6 +21,9 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "test": "vitest run",
+    "test:bun": "bun test src",
+    "embed": "node scripts/embed-viewer.mjs",
+    "compile": "bun build --compile src/cli.ts --outfile ../../dist-bin/kg",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
