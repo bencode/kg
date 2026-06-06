@@ -1,9 +1,8 @@
 // Graph view (D): Focus (ego) / Overview (skeleton) over a cached full export.
 
-import { api, esc, TYPE_COLORS, typeBadge, methodBadge, entityHref, docHref } from '/util.js';
-
-let cache = null; // {nodes, edges} — one export per session, filtered client-side
-const getGraph = async () => (cache ??= await api('graph'));
+import {
+  api, esc, fullGraph, TYPE_COLORS, typeBadge, methodBadge, entityHref, docHref,
+} from '/util.js';
 
 const SIZE = (w) => Math.min(56, Math.max(14, 14 + 6 * Math.sqrt(w || 1)));
 
@@ -109,7 +108,7 @@ const sideEdge = async (side, data) => {
 };
 
 export async function renderGraph(el, focus) {
-  const g = await getGraph();
+  const g = await fullGraph();
   el.innerHTML = `
     <div class="graph-layout side-empty">
       <aside class="graph-filters">${FILTERS_HTML}</aside>

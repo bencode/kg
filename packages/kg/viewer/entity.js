@@ -27,7 +27,7 @@ export async function renderEntity(el, name) {
           || '<li class="muted">无</li>'}</ul></section>
     </div>
     <section><h2>被这些文档提及（${mentions.length}）</h2>
-      <ul class="plain doclist">${mentions.map((r) => `
+      <ul class="plain doclist${mentions.length > 6 ? ' cols-list' : ''}">${mentions.map((r) => `
         <li><a href="${docHref(r.from.hash, r.anchor)}">${esc(r.from.title)}</a>
           ${r.anchor ? `<span class="muted">“${esc(truncate(r.anchor, 60))}”</span>` : ''}
           <a class="cite" href="${docHref(r.from.hash, r.anchor)}">↗</a></li>`).join('')

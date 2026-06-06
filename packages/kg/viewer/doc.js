@@ -26,6 +26,13 @@ const renderMarkdown = (md) => {
   return html;
 };
 
+// The chrome <h1> already shows the title; drop a duplicating leading md H1
+// from the RENDERED view only (source view stays verbatim for cite tier 2).
+const stripDupTitle = (md, title) => {
+  const m = /^\s*#\s+(.+?)\s*\n/.exec(md);
+  return m && m[1].trim() === title.trim() ? md.slice(m[0].length) : md;
+};
+
 // Strip md markers so the quote matches rendered textContent.
 const projectQuote = (q) => q
   .replace(/```[a-z]*\n?/g, '').replace(/^#+\s*/gm, '')
@@ -123,7 +130,7 @@ export async function renderDoc(el, hash, cite) {
   const rendered = el.querySelector('#doc-rendered');
   const pre = el.querySelector('#doc-source');
   const notice = el.querySelector('#cite-notice');
-  rendered.innerHTML = renderMarkdown(source);
+  rendered.innerHTML = renderMarkdown(stripDupTitle(source, info.title));
   pre.textContent = source;
   const toggle = el.querySelector('#view-toggle');
   const setMode = (src) => {
