@@ -54,9 +54,19 @@ kg scan <vault> [--scope all|knowledge|knowledge,curriculum]
 ```
 
 Reports `new/changed/unchanged/deleted`. Incremental and cheap. A scoped scan
-never drops out-of-scope docs already in the registry. Start narrow
-(`--scope knowledge`) before opening up to the whole repo; `journal/daily-feed`
-is auto-generated noise — exclude it unless asked.
+never drops out-of-scope docs already in the registry.
+
+**Scope resolution:** explicit `--scope` > `meta/kg/config.json` `scope` array >
+`all`. A vault that defines `scope` in its config is safe to scan bare
+(`kg scan <vault>`); **never pass `--scope all` to a configured vault** unless
+the user asks — it pulls operational noise (configs, machine imports) into the
+registry. Scope entries may be nested paths (`journal/imports/roam-pages-export`).
+
+```jsonc
+// <vault>/meta/kg/config.json (optional, part of the truth layer)
+{ "scope": ["knowledge", "curriculum", "journal/daily-feed"],
+  "wikiLinkStoplist": ["TODO", "DONE", "本周工作"] }
+```
 
 ## 3. L1 — build the concept layer first
 
@@ -121,11 +131,25 @@ Free, exact edges from markdown structure — also a no-LLM smoke test:
 ```bash
 kg extract-structural <vault> <rel-path>           # print a metadata record
 kg extract-structural <vault> <rel-path> --write   # validate + write it + mint arxiv papers
+kg extract-structural <vault> --pending --write    # batch: every doc still lacking metadata
 ```
 
-Extracts relative-link edges (`doc_links`, target resolved to its hash) and
-arXiv ids (guarded so date-like `0324.1227` is not mistaken for a paper). These
-land as `method:"deterministic"` (confidence 1.0).
+Extracts, all as `method:"deterministic"` (confidence 1.0):
+
+- relative md-link edges (`doc_links`, target resolved to its hash)
+- arXiv ids (guarded so date-like `0324.1227` is not mistaken for a paper)
+- `[[wiki-links]]` (Roam/Logseq style, fenced code blocks skipped):
+  resolved to a doc by **title** (same-dir sibling first, else globally unique;
+  ambiguous → skipped) and/or to an **existing** concept via the alias index
+  (→ mention anchored to the containing line). Never auto-creates concepts —
+  a Roam export's thousands of link targets can't pollute the vocabulary.
+  Names in `wikiLinkStoplist` (status markers like TODO) are ignored;
+  everything unresolved lands in `_dangling`.
+
+The `--pending` batch is the cheap first pass after widening scope: it clears
+the pending queue with structural-only records, so the LLM layer (L2) can then
+proceed in prioritized waves via the default merge semantics of
+`kg metadata import` (union — structural and LLM layers coexist).
 
 ## 6. Inspect one file (no registry needed)
 

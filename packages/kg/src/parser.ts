@@ -1,4 +1,4 @@
-// Minimal markdown parsing: title, relative links, headings.
+// Minimal markdown parsing: title, relative links, headings, wiki-links.
 
 export type MdLink = {
   text: string
@@ -6,11 +6,19 @@ export type MdLink = {
   raw: string
 }
 
+// [[name]] reference (Roam/Logseq style); `line` is the containing source
+// line, kept verbatim so structural extraction can use it as an anchor quote.
+export type WikiLink = {
+  name: string
+  line: string
+}
+
 export type ParsedDoc = {
   relPath: string
   title: string
   headings: Array<[number, string]>
   links: MdLink[]
+  wikiLinks: WikiLink[]
   text: string
 }
 
@@ -18,6 +26,26 @@ const H1 = /^#\s+(.+?)\s*$/m
 const HEADING = /^(#{1,6})\s+(.+?)\s*$/gm
 // [text](target) where target is a relative path ending in .md (optionally #anchor)
 const MD_LINK = /\[([^\]]*)\]\((\.\.?\/[^)]+?\.md)(#[^)]*)?\)/g
+const WIKI_LINK = /\[\[([^\][\n]+)\]\]/g
+const FENCE = /^\s*(```|~~~)/
+
+/** [[wiki-link]] occurrences outside fenced code blocks. */
+const findWikiLinks = (text: string): WikiLink[] => {
+  const out: WikiLink[] = []
+  let inFence = false
+  for (const line of text.split('\n')) {
+    if (FENCE.test(line)) {
+      inFence = !inFence
+      continue
+    }
+    if (inFence) continue
+    for (const m of line.matchAll(WIKI_LINK)) {
+      const name = m[1]!.trim()
+      if (name) out.push({ name, line: line.trim() })
+    }
+  }
+  return out
+}
 
 const stem = (relPath: string): string => {
   const base = relPath.split('/').at(-1) ?? relPath
@@ -45,5 +73,12 @@ export const parse = (text: string, relPath: string): ParsedDoc => {
   for (const m of text.matchAll(MD_LINK)) {
     links.push({ text: m[1]!, targetRel: safeDecode(m[2]!), raw: m[0] })
   }
-  return { relPath, title: deriveTitle(text, relPath), headings, links, text }
+  return {
+    relPath,
+    title: deriveTitle(text, relPath),
+    headings,
+    links,
+    wikiLinks: findWikiLinks(text),
+    text,
+  }
 }

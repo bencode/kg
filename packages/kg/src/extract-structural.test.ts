@@ -1,4 +1,7 @@
+import { mkdirSync, writeFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { afterEach, beforeEach, expect, test } from 'vitest'
+import * as concepts from './concepts.js'
 import * as ex from './extract-structural.js'
 import * as registry from './registry.js'
 import { makeVault, removeVault } from './testing.js'
@@ -27,6 +30,63 @@ test('links resolve to target hash', () => {
   expect(rec.doc_links).toHaveLength(1)
   const bHash = registry.loadByPath(vault).get('knowledge/b.md')!.hash
   expect(rec.doc_links![0]!.to_hash).toBe(bHash)
+})
+
+const makeRoam = (vault: string): void => {
+  const r = join(vault, 'roam')
+  mkdirSync(r)
+  writeFileSync(join(r, 'Clojure.md'), '- Lisp dialect on the JVM\n', 'utf-8')
+  writeFileSync(
+    join(r, 'June 1st, 2022.md'),
+    '- studied [[Clojure]] macros\n- [[TODO]] write notes\n- read about [[RAG]]\n- saw [[幽灵页面]]\n',
+    'utf-8',
+  )
+}
+
+test('wiki links resolve to docs by title and to existing concepts', () => {
+  makeRoam(vault)
+  mkdirSync(join(vault, 'meta', 'kg'), { recursive: true })
+  writeFileSync(
+    join(vault, 'meta', 'kg', 'config.json'),
+    JSON.stringify({ wikiLinkStoplist: ['TODO'] }),
+    'utf-8',
+  )
+  concepts.mergeImport(vault, [{ canonical: 'RAG', type: 'concept' }])
+  registry.scan(vault, 'knowledge,roam')
+
+  const rec = ex.extract(vault, 'roam/June 1st, 2022.md')
+  const clojureHash = registry.loadByPath(vault).get('roam/Clojure.md')!.hash
+  expect(rec.doc_links!.map((d) => d.to_hash)).toEqual([clojureHash])
+  expect(rec.doc_links![0]!.raw).toBe('[[Clojure]]')
+
+  const mention = (rec.mentions ?? []).find((m) => m.concept === 'rag')
+  expect(mention).toBeDefined()
+  expect(mention!.anchor!.quote).toBe('- read about [[RAG]]')
+
+  const dangling = rec._dangling ?? []
+  expect(dangling).toContain('[[幽灵页面]]')
+  expect(dangling).not.toContain('[[TODO]]') // stoplisted, not dangling
+})
+
+test('ambiguous wiki-link titles are skipped, same-dir wins', () => {
+  makeRoam(vault)
+  const other = join(vault, 'other')
+  mkdirSync(other)
+  writeFileSync(join(other, 'Clojure.md'), '- another Clojure page elsewhere\n', 'utf-8')
+  registry.scan(vault, 'knowledge,roam,other')
+
+  // from roam/: two global candidates, but exactly one sibling → same-dir wins
+  const rec = ex.extract(vault, 'roam/June 1st, 2022.md')
+  const roamHash = registry.loadByPath(vault).get('roam/Clojure.md')!.hash
+  expect(rec.doc_links!.map((d) => d.to_hash)).toEqual([roamHash])
+
+  // from a third dir: two candidates, none sibling → ambiguous, skipped
+  const k = join(vault, 'knowledge')
+  writeFileSync(join(k, 'c.md'), '# Doc C\n\nmentions [[Clojure]]\n', 'utf-8')
+  registry.scan(vault, 'knowledge,roam,other')
+  const recC = ex.extract(vault, 'knowledge/c.md')
+  expect(recC.doc_links).toHaveLength(0)
+  expect(recC._dangling).toContain('[[Clojure]]')
 })
 
 test('structural emits arxiv mentions with month guard', () => {

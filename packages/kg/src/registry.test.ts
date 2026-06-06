@@ -46,6 +46,19 @@ test('gc removes orphan metadata', () => {
   expect(res.hashes).toContain('deadbeef')
 })
 
+test('defaultScope reads vault config, falls back to all', () => {
+  expect(layout.defaultScope(vault)).toBe('all')
+  mkdirSync(join(vault, 'meta', 'kg'), { recursive: true })
+  writeFileSync(
+    layout.configPath(vault),
+    JSON.stringify({ scope: ['knowledge', 'journal/daily'] }),
+    'utf-8',
+  )
+  expect(layout.defaultScope(vault)).toBe('knowledge,journal/daily')
+  const r = registry.scan(vault, layout.defaultScope(vault))
+  expect(r.total).toBe(2) // only knowledge/, journal/daily absent
+})
+
 test('out-of-scope docs preserved on scoped rescan', () => {
   mkdirSync(join(vault, 'journal'))
   writeFileSync(join(vault, 'journal', 'j.md'), '# J\n', 'utf-8')

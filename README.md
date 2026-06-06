@@ -57,10 +57,12 @@ KG="bun packages/kg/src/cli.ts"   # or node packages/kg/dist/cli.js, or dist-bin
 
 # Phase 1 — pure files
 $KG scan <vault> [--scope knowledge]      # hash ledger: new/changed/deleted
+                                          # default scope: meta/kg/config.json, else all
 $KG pending <vault>                       # docs awaiting extraction
 $KG concept import <vault> <json|->      # merge L1 concepts (alias-dedup)
 $KG metadata import <vault> <json|->     # validate anchors + write L2
-$KG extract-structural <vault> <path> --write   # deterministic links/arXiv
+$KG extract-structural <vault> <path> --write   # deterministic links/[[wiki-links]]/arXiv
+$KG extract-structural <vault> --pending --write  # batch over all pending docs
 
 # Phase 2 — SQLite graph index (rebuildable)
 $KG db build <vault>

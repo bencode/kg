@@ -5,13 +5,14 @@
 // stored as the anchor itself.
 
 import { createHash } from 'node:crypto'
-import { existsSync, mkdirSync, readdirSync, statSync } from 'node:fs'
+import { existsSync, mkdirSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 
 export const KG_DIR = 'meta/kg'
 export const REGISTRY_NAME = 'registry.jsonl'
 export const CONCEPTS_NAME = 'concepts.json'
 export const METADATA_DIRNAME = 'metadata'
+export const CONFIG_NAME = 'config.json'
 
 // Dirs skipped at any depth. meta/kg itself is filtered explicitly below.
 export const EXCLUDE_DIRS = new Set(['.git', 'node_modules', '.venv', '__pycache__', 'meta'])
@@ -24,6 +25,24 @@ export const conceptsPath = (vault: string): string => join(kgRoot(vault), CONCE
 export const metadataDir = (vault: string): string => join(kgRoot(vault), METADATA_DIRNAME)
 export const metadataPath = (vault: string, docHash: string): string =>
   join(metadataDir(vault), `${docHash}.json`)
+export const configPath = (vault: string): string => join(kgRoot(vault), CONFIG_NAME)
+
+// Optional per-vault config. `scope` is the default scan scope (overridden by
+// an explicit --scope); `wikiLinkStoplist` filters [[wiki-link]] names that
+// are status markers rather than concepts (TODO, DONE, ...).
+export type VaultConfig = { scope?: string[]; wikiLinkStoplist?: string[] }
+
+export const loadConfig = (vault: string): VaultConfig => {
+  const path = configPath(vault)
+  if (!existsSync(path)) return {}
+  return JSON.parse(readFileSync(path, 'utf-8')) as VaultConfig
+}
+
+/** Default scan scope: vault config if present, else 'all'. */
+export const defaultScope = (vault: string): string => {
+  const scope = loadConfig(vault).scope
+  return scope?.length ? scope.join(',') : 'all'
+}
 
 export const resolveVault = (raw: string): string => {
   const vault = resolve(raw)

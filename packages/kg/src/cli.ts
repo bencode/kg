@@ -137,7 +137,10 @@ const sub =
   }
 
 const commands: Record<string, Cmd> = {
-  scan: ([vault], v) => emit(registry.scan(vaultOf(vault), opt(v.scope, 'all'))),
+  scan: ([vault], v) => {
+    const root = vaultOf(vault)
+    return emit(registry.scan(root, opt(v.scope, layout.defaultScope(root))))
+  },
   resolve: ([hash, vault]) => {
     const doc = registry.resolve(vaultOf(vault), hash ?? '')
     if (doc === undefined) return err(`hash not in registry: ${hash}`)
@@ -156,6 +159,31 @@ const commands: Record<string, Cmd> = {
   metadata: sub(metadataCmds),
   'extract-structural': ([vault, path], v) => {
     const root = vaultOf(vault)
+    if (v.pending === true) {
+      const ctx = extractStructural.buildContext(root)
+      const summary = { processed: 0, written: 0, doc_links: 0, mentions: 0, dangling: 0 }
+      const errors: Array<{ path: string; problems: string[] }> = []
+      for (const doc of registry.pending(root)) {
+        const rec = extractStructural.extractWith(ctx, root, doc.path)
+        summary.processed += 1
+        summary.doc_links += (rec.doc_links ?? []).length
+        summary.mentions += (rec.mentions ?? []).length
+        summary.dangling += (rec._dangling ?? []).length
+        if (v.write !== true) continue
+        const arxiv = extractStructural.arxivConcepts(rec)
+        if (arxiv.length) concepts.mergeImport(root, arxiv)
+        try {
+          metadata.importDoc(root, rec, { createMissing: true })
+          summary.written += 1
+        } catch (e) {
+          if (e instanceof metadata.ValidationError) {
+            errors.push({ path: doc.path, problems: e.problems })
+          } else throw e
+        }
+      }
+      emit({ ...summary, errors })
+      return errors.length ? 2 : 0
+    }
     const rec = extractStructural.extract(root, path ?? '')
     if (v.write === true) {
       concepts.mergeImport(root, extractStructural.arxivConcepts(rec))
@@ -260,6 +288,7 @@ export const main = async (argv: string[]): Promise<number> => {
       'min-conf': { type: 'string' },
       port: { type: 'string' },
       write: { type: 'boolean' },
+      pending: { type: 'boolean' },
       'create-missing': { type: 'boolean' },
       replace: { type: 'boolean' },
     },
